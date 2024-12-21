@@ -11,6 +11,7 @@ This Ansible role sets up Traefik v3 as a reverse proxy on a Docker-based enviro
 - Access to a Cloudflare account with API tokens
 - Basic understanding of Docker and Ansible
 - **Ansible Role: [ansible-role-docker](https://github.com/yourusername/ansible-role-docker)**
+- port 80 and 443 open on the target node
 
 ## Role Variables
 
