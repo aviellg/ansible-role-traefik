@@ -1,4 +1,10 @@
 # ansible-role-traefik/tasks/main.yml
+- name: Start Docker Compose stack
+  become: true
+  docker_compose:
+    project_src: /home/{{ bootstrap_admin_user }}/docker/docker-compose-udms.yml
+    state: absent 
+  tags: docker_compose
 
 - name: Allow HTTP traffic through firewall
   become: true
@@ -214,6 +220,24 @@
     group: "{{ bootstrap_admin_user }}"
     mode: '0644'
   tags: tls_opts_file
+
+- name: Create Rate Limit Middleware configuration
+  template:
+    src: middlewares-rate-limit.yml.j2
+    dest: /home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms/middlewares-rate-limit.yml
+    owner: "{{ bootstrap_admin_user }}"
+    group: "{{ bootstrap_admin_user }}"
+    mode: '0644'
+  tags: middlewares_file
+
+- name: Create Secure Headers Middleware configuration
+  template:
+    src: middlewares-secure-headers.yml.j2
+    dest: /path/to/appdata/traefik3/rules/udms/middlewares-secure-headers.yml
+    owner: "{{ bootstrap_admin_user }}"
+    group: "{{ bootstrap_admin_user }}"
+    mode: '0644'
+  tags: middlewares_file
 
 - name: Copy middlewares-basic-auth.yml to target location
   become: true
