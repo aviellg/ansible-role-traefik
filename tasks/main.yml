@@ -90,9 +90,6 @@
     path: /home/{{ bootstrap_admin_user }}/docker/secrets/basic_auth_credentials
     name: "{{ http_username }}"
     password: "{{ http_password }}"
-  vars:
-    http_username: your_username
-    http_password: your_password
   tags: secrets_file
 
 - name: Set ownership for Basic Auth credentials file
