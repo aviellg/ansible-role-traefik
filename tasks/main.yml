@@ -1,9 +1,12 @@
 # ansible-role-traefik/tasks/main.yml
-- name: Start Docker Compose stack
+- name: Stop Docker Compose stack
   become: true
   community.docker.docker_compose_v2:
-    project_src: /home/{{ bootstrap_admin_user }}/docker/docker-compose-udms.yml
-    state: absent 
+    project_src: /home/{{ bootstrap_admin_user }}/docker
+    files:
+      - docker-compose-udms.yml
+    state: absent
+  ignore_errors: yes
   tags: docker_compose
 
 - name: Allow HTTP traffic through firewall
@@ -233,7 +236,7 @@
 - name: Create Secure Headers Middleware configuration
   template:
     src: middlewares-secure-headers.yml.j2
-    dest: /path/to/appdata/traefik3/rules/udms/middlewares-secure-headers.yml
+    dest: /home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms/middlewares-secure-headers.yml
     owner: "{{ bootstrap_admin_user }}"
     group: "{{ bootstrap_admin_user }}"
     mode: '0644'
