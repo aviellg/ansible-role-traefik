@@ -25,86 +25,68 @@
     proto: tcp
   tags: firewall
 
-- name: Check if .env file exists
-  become: true
-  stat:
-    path: /home/{{ bootstrap_admin_user }}/docker/.env
-  register: env_file
-
-- name: Create .env file with permissions if not exists
+- name: Create necessary directories with correct permissions
   become: true
   file:
-    path: /home/{{ bootstrap_admin_user }}/docker/.env
-    state: touch
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode | default('0755') }}"
+  loop:
+    - { path: "/home/{{ bootstrap_admin_user }}/docker/secrets", mode: "0700" }
+    - { path: "/home/{{ bootstrap_admin_user }}/docker/logs/udms", mode: "0755" }
+    - { path: "/home/{{ bootstrap_admin_user }}/docker/logs/udms/traefik", mode: "0755" }
+    - { path: "/home/{{ bootstrap_admin_user }}/docker/appdata/traefik3", mode: "0755" }
+    - { path: "/home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/acme", mode: "0755" }
+    - { path: "/home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules", mode: "0755" }
+    - { path: "/home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms", mode: "0755" }
+  tags:
+    - directories
+    - log_dirs
+    - traefik_dirs
+    - secrets_dir
+    
+- name: Ensure .env file exists with correct permissions and content
+  become: true
+  copy:
+    content: |
+      PUID={{ PUID }}
+      PGID={{ PGID }}
+      TZ={{ TZ }}
+      USERDIR=/home/{{ bootstrap_admin_user }}
+      DOCKERDIR=/home/{{ bootstrap_admin_user }}/docker
+      DATADIR=/media/storage
+      HOSTNAME={{ HOSTNAME }}
+      DOMAINNAME_1={{ DOMAINNAME_1 }}
+      LOCAL_IPS={{ LOCAL_IPS }}
+      CLOUDFLARE_IPS={{ CLOUDFLARE_IPS }}
+    dest: /home/{{ bootstrap_admin_user }}/docker/.env
     owner: root
     group: root
     mode: '0600'
-  when: not env_file.stat.exists
   tags: env_file
 
-- name: Populate .env file with initial variables
-  become: true
-  lineinfile:
-    path: "/home/{{ bootstrap_admin_user }}/docker/.env"
-    create: yes
-    line: "{{ item }}"
-  with_items:
-    - "PUID={{ PUID }}"
-    - "PGID={{ PGID }}"
-    - "TZ={{ TZ }}"
-    - "USERDIR=/home/{{ bootstrap_admin_user }}"
-    - "DOCKERDIR=/home/{{ bootstrap_admin_user }}/docker"
-    - "DATADIR=/media/storage"
-    - "HOSTNAME={{ HOSTNAME }}"
-    - "DOMAINNAME_1={{ DOMAINNAME_1 }}"
-    - "LOCAL_IPS={{ LOCAL_IPS }}"
-    - "CLOUDFLARE_IPS={{ CLOUDFLARE_IPS }}"
-  tags: env_file
+#- name: Print loaded variables used for troubleshooting purposes
+#  debug:
+#    msg:
+#      - "PUID: {{ PUID }}"
+#      - "PGID: {{ PGID }}"
+#      - "TZ: {{ TZ }}"
+#      - "USERDIR: /home/{{ bootstrap_admin_user }}"
+#      - "DOCKERDIR: /home/{{ bootstrap_admin_user }}/docker"
+#      - "DATADIR: /media/storage"
+#      - "HOSTNAME: {{ HOSTNAME }}"
+#      - "DOMAINNAME_1: {{ DOMAINNAME_1 }}"
+#      - "LOCAL_IPS: {{ LOCAL_IPS }}"
+#      - "CLOUDFLARE_IPS: {{ CLOUDFLARE_IPS }}"
 
-- name: Print loaded variables
-  debug:
-    msg:
-      - "PUID: {{ PUID }}"
-      - "PGID: {{ PGID }}"
-      - "TZ: {{ TZ }}"
-      - "USERDIR: /home/{{ bootstrap_admin_user }}"
-      - "DOCKERDIR: /home/{{ bootstrap_admin_user }}/docker"
-      - "DATADIR: /media/storage"
-      - "HOSTNAME: {{ HOSTNAME }}"
-      - "DOMAINNAME_1: {{ DOMAINNAME_1 }}"
-      - "LOCAL_IPS: {{ LOCAL_IPS }}"
-      - "CLOUDFLARE_IPS: {{ CLOUDFLARE_IPS }}"
-
-
-- name: Install apache2-utils package
-  become: true
-  apt:
-    name: apache2-utils
-    state: present
-  tags: packages
-
-- name: Create secrets directory if not exists
-  become: true
-  file:
-    path: /home/{{ bootstrap_admin_user }}/docker/secrets
-    state: directory
-    owner: root
-    group: root
-    mode: '0700'
-  tags: secrets_dir
-
-- name: Create Basic Auth credentials secret file
+- name: Create Basic Auth credentials secret file with correct permissions
   become: true
   ansible.builtin.htpasswd:
     path: /home/{{ bootstrap_admin_user }}/docker/secrets/basic_auth_credentials
     name: "{{ http_username }}"
     password: "{{ http_password }}"
-  tags: secrets_file
-
-- name: Set ownership for Basic Auth credentials file
-  become: true
-  file:
-    path: /home/{{ bootstrap_admin_user }}/docker/secrets/basic_auth_credentials
     owner: root
     group: root
     mode: '0644'
@@ -120,55 +102,31 @@
     mode: '0600'
   tags: secrets_file
 
-- name: Create Traefik 3 directory
+- name: Check if acme.json file exists
   become: true
-  file:
-    path: /home/{{ bootstrap_admin_user }}/docker/appdata/traefik3
-    state: directory
-  tags: traefik_dirs
+  stat:
+    path: /home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/acme/acme.json
+  register: acme_file
 
-- name: Create ACME directory
+- name: Clear acme.json file if reset_acme is true
   become: true
-  file:
-    path: /home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/acme
-    state: directory
-  tags: traefik_dirs
+  copy:
+    content: ""
+    dest: /home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/acme/acme.json
+    owner: root
+    group: root
+    mode: '0600'
+  when: acme_file.stat.exists and reset_acme
+  tags: acme_file
 
-- name: Create rules directory
-  become: true
-  file:
-    path: /home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules
-    state: directory
-  tags: traefik_dirs
-
-- name: Create udms directory under rules
-  become: true
-  file:
-    path: /home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms
-    state: directory
-  tags: traefik_dirs
-
-- name: Create empty acme.json file
+- name: Create empty acme.json file if it doesn't exist
   become: true
   file:
     path: /home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/acme/acme.json
     state: touch
     mode: '0600'
+  when: not acme_file.stat.exists
   tags: acme_file
-
-- name: Create logs directory for udms
-  become: true
-  file:
-    path: /home/{{ bootstrap_admin_user }}/docker/logs/udms
-    state: directory
-  tags: log_dirs
-
-- name: Create traefik log directory
-  become: true
-  file:
-    path: /home/{{ bootstrap_admin_user }}/docker/logs/udms/traefik
-    state: directory
-  tags: log_dirs
 
 - name: Create empty traefik.log file
   become: true
@@ -184,90 +142,35 @@
     state: touch
   tags: log_files
 
-- name: Copy docker-compose-udms.yml to target location
+- name: Copy templates to target locations
   become: true
   template:
-    src: docker-compose-udms.yml.j2
-    dest: /home/{{ bootstrap_admin_user }}/docker/docker-compose-udms.yml
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
     owner: "{{ bootstrap_admin_user }}"
     group: "{{ bootstrap_admin_user }}"
     mode: '0644'
+  loop:
+    # Docker Compose UDM
+    - { src: "docker-compose-udms.yml.j2", dest: "/home/{{ bootstrap_admin_user }}/docker/docker-compose-udms.yml" }
+    
+    # Socket Proxy
+    - { src: "socket-proxy.yml.j2", dest: "/home/{{ bootstrap_admin_user }}/docker/compose/udms/socket-proxy.yml" }
+    
+    # Traefik
+    - { src: "traefik.yml.j2", dest: "/home/{{ bootstrap_admin_user }}/docker/compose/udms/traefik.yml" }
+    
+    # TLS Options
+    - { src: "tls-opts.yml.j2", dest: "/home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms/tls-opts.yml" }
+    
+    # Middlewares
+    - { src: "middlewares-rate-limit.yml.j2", dest: "/home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms/middlewares-rate-limit.yml" }
+    - { src: "middlewares-secure-headers.yml.j2", dest: "/home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms/middlewares-secure-headers.yml" }
+    - { src: "middlewares-basic-auth.yml.j2", dest: "/home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms/middlewares-basic-auth.yml" }
+    - { src: "middlewares-ip-whitelist.yml.j2", dest: "/home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms/middlewares-ip-whitelist.yml" }
+    
+    # Chains
+    - { src: "chain-internal-auth.yml.j2", dest: "/home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms/chain-internal-auth.yml" }
+    - { src: "chain-no-auth.yml.j2", dest: "/home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms/chain-no-auth.yml" }
+    - { src: "chain-basic-auth.yml.j2", dest: "/home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms/chain-basic-auth.yml" }
   tags: compose_file
-
-- name: Copy socket-proxy.yml to target location
-  become: true
-  template:
-    src: socket-proxy.yml.j2
-    dest: /home/{{ bootstrap_admin_user }}/docker/compose/udms/socket-proxy.yml
-    owner: "{{ bootstrap_admin_user }}"
-    group: "{{ bootstrap_admin_user }}"
-    mode: '0644'
-  tags: compose_file
-
-- name: Copy traefik.yml to target location
-  become: true
-  template:
-    src: traefik.yml.j2
-    dest: /home/{{ bootstrap_admin_user }}/docker/compose/udms/traefik.yml
-    owner: "{{ bootstrap_admin_user }}"
-    group: "{{ bootstrap_admin_user }}"
-    mode: '0644'
-  tags: compose_file
-
-- name: Copy tls-opts.yml to target location
-  become: true
-  template:
-    src: tls-opts.yml.j2
-    dest: /home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms/tls-opts.yml
-    owner: "{{ bootstrap_admin_user }}"
-    group: "{{ bootstrap_admin_user }}"
-    mode: '0644'
-  tags: tls_opts_file
-
-- name: Create Rate Limit Middleware configuration
-  template:
-    src: middlewares-rate-limit.yml.j2
-    dest: /home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms/middlewares-rate-limit.yml
-    owner: "{{ bootstrap_admin_user }}"
-    group: "{{ bootstrap_admin_user }}"
-    mode: '0644'
-  tags: middlewares_file
-
-- name: Create Secure Headers Middleware configuration
-  template:
-    src: middlewares-secure-headers.yml.j2
-    dest: /home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms/middlewares-secure-headers.yml
-    owner: "{{ bootstrap_admin_user }}"
-    group: "{{ bootstrap_admin_user }}"
-    mode: '0644'
-  tags: middlewares_file
-
-- name: Copy middlewares-basic-auth.yml to target location
-  become: true
-  template:
-    src: middlewares-basic-auth.yml.j2
-    dest: /home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms/middlewares-basic-auth.yml
-    owner: "{{ bootstrap_admin_user }}"
-    group: "{{ bootstrap_admin_user }}"
-    mode: '0644'
-  tags: middlewares_file
-
-- name: Copy chain-no-auth.yml to target location
-  become: true
-  template:
-    src: chain-no-auth.yml.j2
-    dest: /home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms/chain-no-auth.yml
-    owner: "{{ bootstrap_admin_user }}"
-    group: "{{ bootstrap_admin_user }}"
-    mode: '0644'
-  tags: chains_file
-
-- name: Copy chain-basic-auth.yml to target location
-  become: true
-  template:
-    src: chain-basic-auth.yml.j2
-    dest: /home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms/chain-basic-auth.yml
-    owner: "{{ bootstrap_admin_user }}"
-    group: "{{ bootstrap_admin_user }}"
-    mode: '0644'
-  tags: chains_file

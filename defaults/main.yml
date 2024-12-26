@@ -14,3 +14,5 @@ CLOUDFLARE_IPS: "173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,1
 http_username: your_default_username
 http_password: your_default_password
 docker_privileged_mode: true
+use_staging: false  # Set to true to use staging certificates
+reset_acme: false  # Set to true to reset the acme.json file
