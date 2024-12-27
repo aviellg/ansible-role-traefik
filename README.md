@@ -12,6 +12,7 @@ This Ansible role sets up Traefik v3 as a reverse proxy on a Docker-based enviro
 - Basic understanding of Docker and Ansible
 - **Ansible Role: [ansible-role-docker](https://github.com/yourusername/ansible-role-docker)**
 - port 80 and 443 open on the target node
+- point *.yourdomain.com in your DNS to the target node's IP
 
 ## Role Variables
 
