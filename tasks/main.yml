@@ -80,14 +80,6 @@
 #      - "DOMAINNAME_1: {{ DOMAINNAME_1 }}"
 #      - "LOCAL_IPS: {{ LOCAL_IPS }}"
 #      - - name: Stop Docker Compose stack
-  become: true
-  community.docker.docker_compose_v2:
-    project_src: /home/{{ bootstrap_admin_user }}/docker
-    files:
-      - docker-compose-udms.yml
-    state: absent
-  ignore_errors: yes
-  tags: docker_compose
 
 - name: Install passlib for htpasswd
   become: true
