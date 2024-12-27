@@ -79,7 +79,15 @@
 #      - "HOSTNAME: {{ HOSTNAME }}"
 #      - "DOMAINNAME_1: {{ DOMAINNAME_1 }}"
 #      - "LOCAL_IPS: {{ LOCAL_IPS }}"
-#      - "CLOUDFLARE_IPS: {{ CLOUDFLARE_IPS }}"
+#      - - name: Stop Docker Compose stack
+  become: true
+  community.docker.docker_compose_v2:
+    project_src: /home/{{ bootstrap_admin_user }}/docker
+    files:
+      - docker-compose-udms.yml
+    state: absent
+  ignore_errors: yes
+  tags: docker_compose
 
 - name: Create Basic Auth credentials secret file with correct permissions
   become: true
@@ -174,3 +182,12 @@
     - { src: "chain-no-auth.yml.j2", dest: "/home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms/chain-no-auth.yml" }
     - { src: "chain-basic-auth.yml.j2", dest: "/home/{{ bootstrap_admin_user }}/docker/appdata/traefik3/rules/udms/chain-basic-auth.yml" }
   tags: compose_file
+
+- name: start Docker Compose stack
+  become: true
+  community.docker.docker_compose_v2:
+    project_src: /home/{{ bootstrap_admin_user }}/docker
+    files:
+      - docker-compose-udms.yml
+    state: present
+  tags: docker_compose
