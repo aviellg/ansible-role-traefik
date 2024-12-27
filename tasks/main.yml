@@ -89,6 +89,12 @@
   ignore_errors: yes
   tags: docker_compose
 
+- name: Install passlib for htpasswd
+  become: true
+  pip:
+    name: passlib
+  tags: passlib
+
 - name: Create Basic Auth credentials secret file with correct permissions
   become: true
   ansible.builtin.htpasswd:
