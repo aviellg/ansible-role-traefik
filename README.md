@@ -53,7 +53,7 @@ No dependencies are required for this role.
 
 5. **Socket Proxy Setup:**
    - Define `socket_proxy` network in `docker-compose-udms.yml`.
-   - Create the `socket-proxy.yml` file, specifying privileged mode based on the `docker_privileged_mode` variable.
+   - Create the `socket-proxy.yml` file, specifying privileged mode based on the `docker_privileged_mode` variable - veriables is managed by ansible task that check if it is using container or vm  .
 
 6. **Traefik v3 Configuration:**
    - Create the `traefik.yml` file with all necessary configurations.

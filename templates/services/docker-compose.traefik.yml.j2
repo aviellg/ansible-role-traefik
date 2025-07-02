@@ -1,12 +1,10 @@
 services:
-  # Traefik 3 - Reverse Proxy
   traefik:
     container_name: traefik
     image: traefik:3.0
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped
-    # profiles: ["core", "all"]
     networks:
       t3_proxy:
         ipv4_address: 192.168.90.254 # You can specify a static IP
